@@ -1,0 +1,156 @@
+---
+title: "EDA4"
+output: html_document
+date: "2025-05-03"
+---
+
+# 1, 2, 6
+Poverty, Food, Water & Sanitation, Climate Change
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(readxl)
+library("FactoMineR")
+library('corrr')
+library('purrr')
+```
+
+```{r warning = FALSE}
+goal1 <- read_excel("Goal1.xlsx")
+```
+
+```{r warning = FALSE}
+goal2 <- read_excel("Goal2.xlsx")
+```
+
+```{r warning = FALSE}
+goal6 <- read_excel("Goal6.xlsx")
+```
+
+```{r}
+head(goal1)
+
+goal1 %>% filter(Indicator == "1.2.1") -> goal1_t
+
+print(unique(goal1$Indicator))
+
+print(goal1_t)
+
+summary(goal1$`Frequency of Chlorophyll-a concentration`)
+
+summary(goal1$`TimePeriod`)
+```
+
+```{r}
+goal1_df <- goal1 %>%
+  select(Goal, Indicator, SeriesCode, GeoAreaName, TimePeriod, Value)
+
+goal2_df <- goal2 %>%
+  select(Goal, Indicator, SeriesCode, GeoAreaName, TimePeriod, Value)
+
+goal6_df <- goal6 %>%
+  select(Goal, Indicator, SeriesCode, GeoAreaName, TimePeriod, Value)
+```
+
+Merge dataframes
+```{r}
+goals_df <- rbind(goal1_df, rbind(goal2_df, goal6_df))
+
+goals_df$Value <- as.numeric(goals_df$Value)
+goals_df$TimePeriod <- as.numeric(goals_df$TimePeriod)
+
+summary(goals_df)
+
+head(goals_df)
+```
+
+
+Checking for NAs
+```{r}
+colSums(is.na(goals_df))
+
+dups <- duplicated(goals_df)
+
+summary(dups)
+
+goals_df <- goals_df[!duplicated(goals_df), ]
+```
+
+```{r}
+df_filter <- goals_df %>%
+  filter(Goal == 2)
+
+df_wide <- df_filter %>%
+  pivot_wider(names_from = SeriesCode, values_from = Value, values_fn = mean)
+
+df_wide
+```
+
+PCA Time
+
+```{r}
+numerical_data <- df_wide %>% select(-c(Indicator, GeoAreaName, TimePeriod, Goal)) 
+numerical_data <- scale(!is.na(numerical_data))
+
+numerical_data <- as.data.frame(numerical_data)
+
+# ER, AG, SH, SN, PD, DC, SI for goal 2
+numerical_data <- numerical_data %>%
+  select(starts_with("ER"))
+
+numerical_data2 <- numerical_data %>%
+  select(starts_with("AG"))
+
+numerical_data3 <- numerical_data %>%
+  select(starts_with("SH"))
+
+numerical_data4 <- numerical_data %>%
+  select(starts_with("SN"))
+
+numerical_data
+```
+
+```{r}
+data.pca <- princomp(numerical_data)
+summary(data.pca)
+```
+
+```{r}
+data.pca2 <- princomp(numerical_data2)
+data.pca3 <- princomp(numerical_data3)
+data.pca4 <- princomp(numerical_data4)
+```
+
+```{r}
+library("ggfortify")
+library("factoextra")
+
+pca_res <- prcomp(numerical_data)
+
+fviz_pca_var(data.pca, col.var = "black")
+
+autoplot(pca_res)
+```
+
+```{r}
+fviz_cos2(data.pca, choice = "var", axes = 1:2)
+```
+
+# cos2 = (contribution of variable to PC)^2
+
+```{r}
+index <- fviz_cos2(data.pca, choice = "var", axes = 1:2)
+
+index[1]
+```
+
+```{r}
+fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 50))
+```
+
+```{r}
+data.pca$var$contrib
+```
+
